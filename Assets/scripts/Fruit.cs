@@ -1,39 +1,98 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class Fruit : MonoBehaviour
 {
-    public GameObject[] fruitlist;
-    private GameObject fruit;
-    private bool fruitstate = true;
-    private int num;
 
-    void Update()
+    public Sprite[] fruitlist;
+    public int num;
+    public int fruitID;
+    private SpriteRenderer spriteRenderer;
+    private CircleCollider2D circleCollider;
+    private GameObject spawner;
+    public int fruitTotalID = 1;
+    bool clickState = true;
+    
+    private void Start()
     {
-        if (fruitstate)
-        {
-            num = Random.Range(0, 5);
-            fruit = fruitlist[num];
-            Instantiate(fruit, gameObject.transform.position, fruit.transform.rotation);
+        spawner = GameObject.FindWithTag("spawner");
+        spriteRenderer = GetComponent<SpriteRenderer>();
+        circleCollider = GetComponent<CircleCollider2D>();
+        fruitTotalID = spawner.GetComponent<Spawner>().tolalSpawnerID;
 
-            fruitstate = false;
+
+        num = Random.Range(0, 5);
+        fruitID = num;
+        spriteRenderer.sprite = fruitlist[num];
+        
+        AdjustColliderToSprite();
+    }
+    private void Update()
+    {
+        if (GetComponent<Rigidbody2D>().gravityScale <= 0)
+        {
+            transform.position = spawner.transform.position;
         }
 
-        FollowMouse();
 
-        if (Input.GetMouseButtonUp(0))
+        if (clickState)
         {
-            Rigidbody2D rb = fruit.GetComponent<Rigidbody2D>();
-            rb.gravityScale = 1;
-            rb.velocity = (transform.position - fruit.transform.position).normalized * 10f; // Launch the fruit
+            if (Input.GetMouseButtonUp(0))
+            {
+                Rigidbody2D rb = GetComponent<Rigidbody2D>();
+                rb.gravityScale = 1;
+                rb.velocity = (transform.position - transform.position).normalized * 10f;
+                clickState = false;
+                Invoke("ClickState", 1);
+            }
+        }
+        
+
+    }
+
+
+
+
+    void AdjustColliderToSprite()
+    {
+        if (spriteRenderer.sprite == null) return;
+
+        
+        float spriteRadius = spriteRenderer.sprite.bounds.size.x / 2f;
+
+        
+        circleCollider.radius = spriteRadius;
+    }
+
+    private void OnCollisionStay2D(Collision2D collision)
+    {
+        
+        if (collision.gameObject.CompareTag("fruit"))
+        {
+            Fruit otherFruit = collision.gameObject.GetComponent<Fruit>();
+            if (fruitID == otherFruit.fruitID && fruitTotalID < otherFruit.fruitTotalID)
+            {
+                fruitID++;
+                spriteRenderer.sprite = fruitlist[fruitID];
+                AdjustColliderToSprite();
+                spawner.GetComponent<Spawner>().score++;
+                Destroy(collision.gameObject);
+
+            }
         }
     }
-
-    void FollowMouse()
+    private void OnTriggerEnter2D(Collider2D collision)
     {
-        Vector3 mousePos = Input.mousePosition;
-        Vector3 worldMousePos = Camera.main.ScreenToWorldPoint(new Vector3(mousePos.x, mousePos.y, 10f));
-        fruit.transform.position = new Vector3(worldMousePos.x, worldMousePos.y, fruit.transform.position.z);
+        if (collision.gameObject.CompareTag("rip"))
+        {
+            SceneManager.LoadScene("Ded");
+        }
     }
+    void ClickState()
+    {
+        clickState = true;
+    }
+
 }
